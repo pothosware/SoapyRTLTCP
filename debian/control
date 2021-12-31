@@ -1,0 +1,36 @@
+Source: soapyrtlsdr
+Section: hamradio
+Priority: optional
+Maintainer: Christian Zuckschwerdt <zany@triq.net>
+Uploaders: Josh Blum <josh@pothosware.com>
+Build-Depends:
+    debhelper (>= 9.0.0),
+    cmake,
+    libsoapysdr-dev,
+    librtlsdr-dev
+Standards-Version: 4.5.0
+Homepage: https://github.com/pothosware/SoapyRTLSDR/wiki
+Vcs-Git: https://github.com/pothosware/SoapyRTLSDR.git
+Vcs-Browser: https://github.com/pothosware/SoapyRTLSDR
+
+Package: soapysdr0.7-module-rtlsdr
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: RTL-TCP device support for SoapySDR
+ The Soapy RTL-TCP project provides a SoapySDR hardware support module.
+ Using this, any program using SoapySDR to interface to software
+ defined radio hardware can make use of low cost DVB-T/DAB+ USB dongles
+ based on the Realtek RTL2832U chip as receivers.
+
+Package: soapysdr-module-rtlsdr
+Architecture: all
+Depends: soapysdr0.7-module-rtlsdr, ${misc:Depends}
+Description: RTL-TCP device support for SoapySDR (default version)
+ The Soapy RTL-TCP project provides a SoapySDR hardware support module.
+ Using this, any program using SoapySDR to interface to software
+ defined radio hardware can make use of low cost DVB-T/DAB+ USB dongles
+ based on the Realtek RTL2832U chip as receivers.
+ .
+ This is an empty dependency package that pulls in the RTL-TCP module
+ for the default version of libsoapysdr.
