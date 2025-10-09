@@ -1,0 +1,114 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos-ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SoapySDR
+        run: brew install soapysdr
+      - name: Build
+        run: |
+          cmake -B build
+          cmake --build build
+
+  linux-ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        build_type: [Release, Debug]
+        soapy: [0.4.0, 0.4.1, 0.4.2, 0.4.3, 0.4.4, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4, 0.5.5, 0.6.0, 0.6.1, 0.7.0, 0.7.1, 0.7.2, 0.8.0, 0.8.1]
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
+    env:
+      INSTALL_PREFIX: /usr/local
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup tools
+        run: |
+          sudo apt-get update -q -y
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+          # sudo apt-get install -q -y libsoapysdr-dev
+      - name: Install SoapySDR
+        run: |
+          # Build against all supported SoapySDR versions
+          git clone https://github.com/pothosware/SoapySDR -b soapy-sdr-${{matrix.soapy}}
+          cd SoapySDR
+          cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DENABLE_PYTHON=OFF -DENABLE_PYTHON3=OFF -B build
+          cmake --build build
+          sudo cmake --build build -- install
+          sudo ldconfig
+
+      - name: Build
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -GNinja -B build
+          cmake --build build
+          sudo cmake --build build -- install
+
+      - name: Test module registration
+        run: |
+          SoapySDRUtil --info
+          SoapySDRUtil --check=rtltcp
+
+  windows-ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+        config:
+          - cmake_config: -G "Visual Studio 17 2022" -A "Win32"
+            arch: win32
+            os: windows-2022
+
+          - cmake_config: -G "Visual Studio 17 2022" -A "x64"
+            arch: x64
+            os: windows-2022
+
+          - cmake_config: -G "Visual Studio 17 2022" -A "Win32"
+            arch: win32
+            os: windows-2025
+
+          - cmake_config: -G "Visual Studio 17 2022" -A "x64"
+            arch: x64
+            os: windows-2025
+
+    runs-on: ${{ matrix.config.os }}
+    name: Build on ${{ matrix.config.os }}
+    env:
+      INSTALL_PREFIX: 'C:\Program Files\SoapySDR'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{matrix.config.arch}}
+      - name: Install SoapySDR
+        run: |
+          cd ${{runner.workspace}}
+          # Build SoapySDR that supports OS X GCC modules
+          git clone https://github.com/pothosware/SoapySDR
+          cd SoapySDR
+          git checkout f8d57652d12f9d212f373a81e493eba1a0b058c5
+          cmake ${{matrix.config.cmake_config}} -DENABLE_PYTHON=OFF -DCMAKE_INSTALL_PREFIX="$Env:INSTALL_PREFIX" -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -B build
+          cmake --build build --config ${{matrix.build_type}}
+          cmake --install build --config ${{matrix.build_type}}
+      - name: Build
+        run: |
+          $Env:INCLUDE += ";$Env:INSTALL_PREFIX\include"
+          $Env:LIB += ";$Env:INSTALL_PREFIX\lib"
+          cmake ${{matrix.config.cmake_config}} -DCMAKE_INSTALL_PREFIX="$Env:INSTALL_PREFIX" -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -B build
+          cmake --build build --config ${{matrix.build_type}}
+          cmake --install build --config ${{matrix.build_type}}
+      - name: Test module registration
+        run: |
+          $Env:PATH += ";$Env:INSTALL_PREFIX\bin"
+          SoapySDRUtil --check=rtltcp
