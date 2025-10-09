@@ -284,7 +284,8 @@ private:
     rtltcpRXFormat rxFormat;
     rtlsdr_tuner tunerType;
     int tunerGainCount;
-    uint32_t sampleRate, centerFrequency, bandwidth;
+    uint32_t sampleRate, centerFrequency;
+    double bandwidth;
     int ppm, directSamplingMode;
     bool iqSwap, gainMode, offsetMode, digitalAGC, biasTee;
     double IFGain[6], tunerGain;

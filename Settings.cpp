@@ -27,6 +27,11 @@
 #include <algorithm>
 #include <cstring>
 
+#ifdef _MSC_VER
+    #include <BaseTsd.h>
+    typedef SSIZE_T ssize_t;
+#endif
+
 #define DEFAULT_PORT "1234"
 
 SoapyRTLTCP::SoapyRTLTCP(const SoapySDR::Kwargs &args):
@@ -113,16 +118,16 @@ int SoapyRTLTCP::recvHeader()
         // worst case at 100ms for 12 bytes is 1.2 secs
         struct timeval tv = {0, 100000};
 
-        int ret = select(serverSocket + 1, &readfds, NULL, NULL, &tv);
-        if (ret)
+        SOCKET ret = select(serverSocket + 1, &readfds, NULL, NULL, &tv);
+        if (ret != INVALID_SOCKET)
         {
-            ssize_t received = recv(serverSocket, (char *)&cmd + (sizeof(cmd) - left), left, 0);
+            ssize_t received = recv(serverSocket, &cmd[0] + (sizeof(cmd) - left), left, 0);
             if (received < 0)
             {
                 SoapySDR_logf(SOAPY_SDR_DEBUG, "server recv error");
                 break;
             }
-            left -= received;
+            left -= (int)received;
         }
     }
 
@@ -150,8 +155,8 @@ int SoapyRTLTCP::sendCommand(rtltcpCommand command, unsigned int param)
         // worst case at 100ms for 5 bytes is 0.5 secs
         struct timeval tv = {0, 100000};
 
-        int ret = select(serverSocket + 1, NULL, &writefds, NULL, &tv);
-        if (ret)
+        SOCKET ret = select(serverSocket + 1, NULL, &writefds, NULL, &tv);
+        if (ret != INVALID_SOCKET)
         {
             ssize_t sent = send(serverSocket, (char *)&cmd + (sizeof(cmd) - left), left, 0);
             if (sent < 0)
@@ -159,7 +164,7 @@ int SoapyRTLTCP::sendCommand(rtltcpCommand command, unsigned int param)
                 SoapySDR_logf(SOAPY_SDR_WARNING, "RTL-TCP server send error");
                 break;
             }
-            left -= sent;
+            left -= (int)sent; // this is sound since sent must be small
         }
     }
 
@@ -233,7 +238,7 @@ SOCKET SoapyRTLTCP::connectToServer(char const *serverName, char const *defaultP
     }
 
     struct sockaddr_storage addr = {};
-    unsigned addr_len            = sizeof(addr);
+    socklen_t addr_len           = sizeof(addr);
     SOCKET sock = INVALID_SOCKET;
     for (res = res0; res; res = res->ai_next)
     {
@@ -514,7 +519,7 @@ double SoapyRTLTCP::getGain(const int /*direction*/, const size_t /*channel*/, c
         }
         if (tunerType == RTLSDR_TUNER_E4000)
         {
-            return getE4000Gain(stage, IFGain[stage - 1]);
+            return getE4000Gain(stage, (int)IFGain[stage - 1]);
         }
 
         return IFGain[stage - 1];
@@ -940,6 +945,7 @@ std::vector<int> SoapyRTLTCP::rtlTunerGains(rtlsdr_tuner tunerType)
     case RTLSDR_TUNER_R820T:
     case RTLSDR_TUNER_R828D:
         return r82xx_gains;
+    case RTLSDR_TUNER_UNKNOWN:
     default:
         return unknown_gains;
 	}

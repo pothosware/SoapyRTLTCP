@@ -30,6 +30,11 @@
 #include <climits>   //SHRT_MAX
 #include <cstring>   // memcpy
 
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 std::vector<std::string> SoapyRTLTCP::getStreamFormats(const int /*direction*/, const size_t /*channel*/) const
 {
     std::vector<std::string> formats;
@@ -99,7 +104,7 @@ void SoapyRTLTCP::net_recv_operation(void)
         }
 
         // Block on recv
-        ssize_t received = recv(serverSocket, _buf + tail, chunk_size, 0);
+        ssize_t received = recv(serverSocket, (char *)_buf + tail, (int)chunk_size, 0);
         if (received <= 0)
         {
             SoapySDR_logf(SOAPY_SDR_DEBUG, "RTL-TCP server recv end");
@@ -168,7 +173,7 @@ SoapySDR::Stream *SoapyRTLTCP::setupStream(
         // Create lookup tables
         for (unsigned int i = 0; i <= 0xffff; i++)
         {
-#if (__BYTE_ORDER == __LITTLE_ENDIAN)
+#if (__BYTE_ORDER__ == __LITTLE_ENDIAN__)
             float re = ((i & 0xff) - 127.4f) * (1.0f / 128.0f);
             float im = ((i >> 8) - 127.4f) * (1.0f / 128.0f);
 #else
@@ -388,5 +393,5 @@ int SoapyRTLTCP::readStream(
     if (_buf_head != _buf_tail)
         flags |= SOAPY_SDR_MORE_FRAGMENTS;
 
-    return returnedElems;
+    return (int)returnedElems; // this conversion is sound since _buf is small
 }
