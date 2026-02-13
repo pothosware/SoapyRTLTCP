@@ -435,7 +435,7 @@ bool SoapyRTLTCP::hasGainMode(const int /*direction*/, const size_t /*channel*/)
 void SoapyRTLTCP::setGainMode(const int /*direction*/, const size_t /*channel*/, const bool automatic)
 {
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting RTL-TCP gain mode: %s", automatic ? "Automatic" : "Manual");
-    int r = sendCommand(RTLTCP_SET_GAIN_MODE, gainMode ? 0 : 1);
+    int r = sendCommand(RTLTCP_SET_GAIN_MODE, automatic ? 0 : 1);
     if (r != 0)
     {
         throw std::runtime_error("setFrequencyCorrection failed");
